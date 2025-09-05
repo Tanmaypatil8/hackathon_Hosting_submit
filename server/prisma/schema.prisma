@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  gender    String?
+  role      String    // "student" or "host"
+  createdAt DateTime  @default(now())
+
+  // Relations
+  profile          UserProfile?
+  hostProfile      HostProfile?
+  hostedHackathons Hackathon[]   @relation("HostHackathons")
+  registrations    Registration[]
+  teamMemberships  TeamMember[]
+  ledTeams        Team[]         @relation("TeamLeader")
+}
+
+model UserProfile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  location       String?
+  education      String?
+  studyYear      String?   // e.g., 1st year, 2nd year
+  collegeName    String?
+  courseName     String?
+  skills         Json?     // store as array
+  profession     String?
+  bio            String?
+  dateOfBirth    DateTime?
+  domain         String?
+  socialLinks    Json?     // {github: "", linkedin: "", twitter: ""}
+  achievements   Json?     // list of achievements
+  profilePicUrl  String?
+
+  // Relations
+  user           User     @relation(fields: [userId], references: [id])
+}
+
+model HostProfile {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique
+  profession       String?
+  bio              String?  @db.Text
+  collegeOrCompany String?
+  domain           String?
+  achievements     String?  @db.Text
+  socialLinks      String?  @db.Text
+  location         String?
+  profilePicUrl    String?  // Add this field
+
+  // Relations
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model Hackathon {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String    @db.Text
+  overview        String    @db.Text  // Add this field
+  rules           Json      @default("[]")
+  criteria        String    @db.Text
+  timeline        Json      @default("{}")
+  rounds          Json      @default("[]")
+  prizes          Json      @default("[]")
+  faqs            Json      @default("[]")
+  updates         Json      @default("[]")
+  helpContact     Json    @default("[]")
+  mode            String    @default("ONLINE")
+  teamSize        Int?
+  domain          String
+  skillsRequired  Json      @default("[]")
+  startDate       DateTime
+  endDate         DateTime
+  location        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  hostId          Int
+
+  // Relations
+  host            User           @relation("HostHackathons", fields: [hostId], references: [id])
+  registrations   Registration[]
+  teams           Team[]
+}
+
+model Registration {
+  id             Int       @id @default(autoincrement())
+  userId         Int
+  hackathonId    Int
+  instituteName  String
+  course         String
+  gender         String
+  phoneNumber    String
+  profession     String
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  user           User      @relation(fields: [userId], references: [id])
+  hackathon      Hackathon @relation(fields: [hackathonId], references: [id])
+
+  @@unique([userId, hackathonId])
+}
+
+model Team {
+  id             Int       @id @default(autoincrement())
+  name           String
+  bio            String?
+  rolesRequired  Json      @default("[]")
+  hackathonId    Int
+  leaderId       Int
+  createdAt      DateTime  @default(now())
+
+  // Relations
+  hackathon      Hackathon  @relation(fields: [hackathonId], references: [id])
+  leader         User       @relation("TeamLeader", fields: [leaderId], references: [id])
+  members        TeamMember[]
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  userId    Int
+  role      String?  // e.g. Frontend Developer
+  joinedAt  DateTime @default(now())
+
+  // Relations
+  team      Team     @relation(fields: [teamId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
